@@ -1,0 +1,4 @@
+Dependencies:
+python 2.6+
+python Xlib
+python opencv

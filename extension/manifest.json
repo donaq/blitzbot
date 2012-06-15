@@ -1,0 +1,12 @@
+{
+	"name": "Bejeweled Blitz Cheat",
+	"version": "1.0",
+	"manifest_version": 2,
+	"description": "Cheat for BB",
+	"content_scripts": [
+		{
+			"matches": ["https://apps.facebook.com/bejeweledblitz/*"],
+			"js": ["jquery.min.js", "bejeweledcheat.js"]
+		}
+	]
+}
