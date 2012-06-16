@@ -36,12 +36,10 @@ $(document).ready(function(){
 			$("#overlay").html('coords '+evt.screenX+' '+evt.screenY);
 			x1 = evt.screenX;
 			y1 = evt.screenY;
-			$("#overlay").html(''+x1+' '+y1);
 		}
 		else if(x2==-1){
 			x2 = evt.screenX;
 			y2 = evt.screenY;
-			$("#overlay").html(''+x2+' '+y2);
 		}
 	});
 });
