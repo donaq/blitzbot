@@ -23,23 +23,42 @@ class BlitzCheatHandler(StreamRequestHandler):
 		req = self.request.recv(4096)
 		print req
 		self.request.sendall("""HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: 1\r\n\r\n1\r\n\r\n""")
+		try:
+			print self.x1, self.y1, self.x2, self.y2
+		except: pass
 		if 'coords' in req:
 			req = req.split('\n')
 			coords = [l.strip() for l in req if 'coords' in l][0]
 			coords = [int(i) for i in coords.split("=")[1].split('+')]
 			self.x1, self.y1, self.x2, self.y2 = coords[0], coords[1], coords[2], coords[3]
 			self.calibrate()
-			bc = BlitzCheater(self.x1, self.y1, self.x2, self.y2)
-			bc.run()
+		elif 'playgame' in req:
+			server = self.server
+			try:
+				bc = BlitzCheater(server.x1, server.y1, server.x2, server.y2)
+				bc.run()
+			except:
+				print "Grid not initialized."
+		elif "adjust" in req:
+			server = self.server
+			req = req.split('\n')
+			adjustments = [l.strip() for l in req if 'adjust' in l][0]
+			adjustments = [int(i) for i in adjustments.split("=")[1].split('+')]
+			try:
+				print "before:", server.x1, server.y1, server.x2, server.y2
+				server.x1, server.y1, server.x2, server.y2 = map(lambda x,y: x+y, (server.x1, server.y1, server.x2, server.y2), adjustments)
+				print "after:", server.x1, server.y1, server.x2, server.y2
+				self.savegrid()
+			except:
+				print "Grid not initialized."
 
 	def calibrate(self, showgrid=True):
 		screenshot()
+		server = self.server
 		x1,y1,x2,y2 = self.x1,self.y1,self.x2,self.y2
-		imcolor = cv.LoadImage('screenshot.png')
 		image = cv.LoadImage('screenshot.png',cv.CV_LOAD_IMAGE_GRAYSCALE)
 
 		edges = cv.CreateImage(cv.GetSize(image),8,1)
-		cv.NamedWindow('Harris', cv.CV_WINDOW_AUTOSIZE)
 
 		def getmean(image, x, y, w, h):
 			cv.SetImageROI(image,(x,y,w,h))
@@ -54,25 +73,25 @@ class BlitzCheatHandler(StreamRequestHandler):
 
 		# get left side
 		mean = getmean(image, x1-5,y1,10,y2-y1)
-		self.x1 = getlines(image, edges, mean, 0, x1-3, x1+3, max)
+		server.x1 = getlines(image, edges, mean, 0, x1-3, x1+3, max)
 
 		# get right side
 		mean = getmean(image, x2-5,y1,10,y2-y1)
-		self.x2 = getlines(image, edges, mean, 0, x2-3, x2+3, max)+1
+		server.x2 = getlines(image, edges, mean, 0, x2-3, x2+3, max)+1
 
 		# get top
 		mean = getmean(image, x1, y1-5, x2-x1, 10)
-		self.y1 = getlines(image, edges, mean, 1, y1-3, y1+3, min)
+		server.y1 = getlines(image, edges, mean, 1, y1-3, y1+3, min)
 
 		# get bottom
 		mean = getmean(image, x1, y2-5, x2-x1, 10)
-		self.y2 = getlines(image, edges, mean, 1, y2-3, y2+3, max)
+		server.y2 = getlines(image, edges, mean, 1, y2-3, y2+3, max)
 
-		if showgrid:
-			self.showgrid(imcolor)
+		self.savegrid()
 
-	def showgrid(self, imcolor):
-		x1,y1,x2,y2 = self.x1,self.y1,self.x2,self.y2
+	def savegrid(self):
+		imcolor = cv.LoadImage('screenshot.png')
+		x1,y1,x2,y2 = server.x1,server.y1,server.x2,server.y2
 		jumpx, jumpy = (x2-x1)/8, (y2-y1)/8
 		
 		for i in range(8):
@@ -81,10 +100,9 @@ class BlitzCheatHandler(StreamRequestHandler):
 			cv.Line(imcolor, (currx, y1), (currx, y2), (0,0,255), 1)
 		
 		cv.Line(imcolor, (x2,y1), (x2,y2), (0,0,255), 1)
+		cv.Line(imcolor, (x1,y2), (x2,y2), (255,0,255), 1)
+		cv.SaveImage('grid.png', imcolor)
 		
-		cv.NamedWindow('Harris', cv.CV_WINDOW_AUTOSIZE)
-		cv.ShowImage('Harris', imcolor) # show the image
-		cv.WaitKey()
 
 class BlitzCheater(Thread):
 	timelimit = 75 # number of seconds to play
@@ -93,6 +111,7 @@ class BlitzCheater(Thread):
 		self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
 		self.width, self.height = (x2-x1)/8, (y2-y1)/8
 		self.xmid, self.ymid = self.width/2, self.height/2
+		self.makeboard()
 
 		self.display = display.Display()
 		self.root = self.display.screen().root
@@ -112,13 +131,13 @@ class BlitzCheater(Thread):
 
 	def makeboard(self):
 		tiles = range(8)
-		for j in tiles:
-			for i in tiles:
-				xmid, ymid= self.x1+i*self.width+self.xmid,self.y1+j*self.height+self.ymid
-				self.movepointer(xmid, ymid)
-				time.sleep(1)
-				print self.screen[xmid,ymid],
-			print ''
+		self.board = [[(self.x1+i*self.width+self.xmid,self.y1+j*self.height+self.ymid) for i in tiles] for j in tiles]
+		for row in self.board:
+			print row
+
+	def screenshot(self):
+		screenshot()
+		self.screen = Image.open("screenshot.png").load()
 
 	def run(self):
 		screenshot()

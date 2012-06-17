@@ -2,14 +2,16 @@ var x1=-1;
 var y1=-1;
 var x2=-1;
 var y2=-1;
-count = 0;
 var overlayshown = false;
+var serv = "http://localhost:9999";
 $(document).ready(function(){
 	$('body').append('<div id="debug" />');
 	$('body').append('<div id="overlay" />');
 	$(document).keypress(function(evt){
-		if(evt.which==106){
+		// c for calibrate
+		if(evt.which==99){
 			if(!overlayshown){
+				x1 = y1 = x2 = y2 = -1;
 				$("#overlay").show().css({
 					"position":"absolute",
 					"top":0,
@@ -24,9 +26,17 @@ $(document).ready(function(){
 				$("#overlay").hide();
 				overlayshown = false;
 				if(x1==-1||x2==-1||y2==-1||y1==-1) return;
-				$.post("http://localhost:9999", {"coords":[x1,y1,x2,y2].join(' ')});
-				x1 = y1 = x2 = y2 = -1;
+				$.post(serv, {"coords":[x1,y1,x2,y2].join(' ')});
 			}
+		}
+		// p for play
+		else if(evt.which==112)
+			$.post(serv, {"playgame":"true"});
+		// a for adjust
+		else if(evt.which==97){
+			params = prompt("Adjustments: ", "");
+			if(params!=null && params!="")
+				$.post(serv, {"adjust": params});
 		}
 	});
 	$(document).click(function(evt){
