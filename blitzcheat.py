@@ -18,6 +18,60 @@ def screenshot():
 	else:
 		print "Unable to get the screenshot."
 
+def make_adjacency():
+	"""Creates possible moves and positions to check for each position"""
+	erange = range(8)
+	matrix = [[None for i in erange] for j in erange]
+	mvs = [{'mv':(0,-1)},{'mv':(0,1)},{'mv':(-1,0)},{'mv':(1,0)}]
+	pls = lambda x,y:x+y
+	movefun = lambda x,y: map(pls, x, y)
+	for mv in mvs:
+		# index to mutate for checks on positions perpendicular to movement
+		m = mv['mv']
+		perindex = 0 if m[1] else 1
+		# index to mutate for checks on positions parallel to movement
+		parindex = 0 if perindex else 1
+		# get the transformation matrices for 2 more squares in the same direction
+		parfactor = m[parindex]*1
+		parchecks = ([0,0], [0,0])
+		for i in (1,0):
+			parchecks[i][parindex] += parfactor*(i+1)
+		mv['checks'] = [parchecks]
+		# get the tranformation matrices for squares perpendicular to target square
+		for chks in ((-1,1), (-2,-1), (2,1)):
+			perchecks = ([0,0], [0,0])
+			for i,j in zip((0,1), chks):
+				perchecks[i][perindex] += j
+			mv['checks'].append(perchecks)
+
+	for j in erange:
+		for i in erange:
+			moves = []
+			# move up down left right
+			for mv in mvs:
+				checks = []
+				to = movefun((i,j), mv['mv'])
+				if -1 in to or 8 in to:
+					continue
+				mov = {'move':to}
+				for check in mv['checks']:
+					invalid = False
+					chksquares = []
+					for square in check:
+						toto = movefun(to, square)
+						if -1 in toto or 8 in toto:
+							invalid = True
+							break
+						chksquares.append(toto)
+					if invalid:
+						continue
+					checks.append(chksquares)
+				mov['checks'] = checks
+				moves.append(mov)
+			matrix[i][j] = moves
+	return matrix
+
+
 class BlitzCheatHandler(StreamRequestHandler):
 	def handle(self):
 		req = self.request.recv(4096)
@@ -34,11 +88,8 @@ class BlitzCheatHandler(StreamRequestHandler):
 			self.calibrate()
 		elif 'playgame' in req:
 			server = self.server
-			try:
-				bc = BlitzCheater(server.x1, server.y1, server.x2, server.y2)
-				bc.run()
-			except:
-				print "Grid not initialized."
+			bc = BlitzCheater(server.x1, server.y1, server.x2, server.y2)
+			bc.run()
 		elif "adjust" in req:
 			server = self.server
 			req = req.split('\n')
@@ -132,24 +183,58 @@ class BlitzCheater(Thread):
 	def makeboard(self):
 		tiles = range(8)
 		self.board = [[(self.x1+i*self.width+self.xmid,self.y1+j*self.height+self.ymid) for i in tiles] for j in tiles]
-		for row in self.board:
-			print row
+	
+	def movegem(self, fr, to):
+		(i,j),(k,l) = fr, to
+		self.movepointer(*self.board[i][j])
+		self.click()
+		self.movepointer(*self.board[k][l])
+		self.click()
 
 	def screenshot(self):
 		screenshot()
 		self.screen = Image.open("screenshot.png").load()
 
-	def run(self):
-		screenshot()
-		self.movepointer(self.x1+(self.x2-self.x1)/2+70, self.y1+(self.y2-self.y1)/2+70)
-		self.click()
-		self.movepointer(self.x1+(self.x2-self.x1)/2+110, self.y1+(self.y2-self.y1)/2+70)
-		self.click()
+	def getmoves(self):
+		rrange = range(7,-1,-1)
+		moves = []
+		for i in rrange:
+			for j in rrange:
+				to = self.getmovefrompos(i,j)
+				if to: moves.append(((i,j), to))
+		return moves
 
-	# to signal stop playing
-	def kill(self):
-		self.stop = True
+	def getmovefrompos(self, i, j):
+		x,y = self.board[i][j]
+		color = self.screen[x,y]
+		maxmatch, maxindex = 0, 0
+		for move,index in zip(matrix[i][j], range(len(matrix[i][j]))):
+			to = move['move']
+			matches = 0
+			for check in move['checks']:
+				for k,l in check:
+					x,y = self.board[k][l]
+					if color != self.screen[x,y]:
+						break
+				else:
+					matches+=1
+			if matches>maxmatch:
+				maxmatch, maxindex = matches, index
+		if maxmatch>0:
+			return matrix[i][j][maxindex]['move']
+		return None
+
+	def run(self):
+		runlimit = time.time()+self.timelimit
+		while time.time()<runlimit:
+			self.screenshot()
+			moves = self.getmoves()
+			for fr, to in moves:
+				self.movegem(fr, to)
+			time.sleep(0.3)
+
 
 if __name__=="__main__":
+	matrix = make_adjacency()
 	server = TCPServer(('localhost',9999), BlitzCheatHandler)
 	server.serve_forever()
