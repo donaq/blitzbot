@@ -38,6 +38,8 @@ $(document).ready(function(){
 			if(params!=null && params!="")
 				$.post(serv, {"adjust": params});
 		}
+		else if(evt.which==109)
+			$.post(serv, {"mining":"true"});
 	});
 	$(document).click(function(evt){
 		if(!overlayshown) return;

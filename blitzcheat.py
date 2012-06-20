@@ -4,17 +4,18 @@ from Xlib.ext.xtest import fake_input
 from SocketServer import TCPServer, StreamRequestHandler
 from threading import Thread
 from PIL import Image
+from colors import colormap
 import cv, gtk.gdk, time, math
 
-def screenshot():
+def screenshot(scrname="screenshot.png"):
 	"""Saves a screenshot"""
 	w = gtk.gdk.get_default_root_window()
 	sz = w.get_size()
 	pb = gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,False,8,sz[0],sz[1])
 	pb = pb.get_from_drawable(w,w.get_colormap(),0,0,0,0,sz[0],sz[1])
 	if (pb != None):
-		pb.save("screenshot.png","png")
-		print "Screenshot saved to screenshot.png."
+		pb.save(scrname,"png")
+		print "Screenshot saved to %s." % scrname
 	else:
 		print "Unable to get the screenshot."
 
@@ -102,6 +103,10 @@ class BlitzCheatHandler(StreamRequestHandler):
 				self.savegrid()
 			except:
 				print "Grid not initialized."
+		elif "mining" in req:
+			server = self.server
+			capturer = BlitzCapture(server.x1, server.y1, server.x2, server.y2)
+			capturer.run()
 
 	def calibrate(self, showgrid=True):
 		screenshot()
@@ -153,7 +158,6 @@ class BlitzCheatHandler(StreamRequestHandler):
 		cv.Line(imcolor, (x2,y1), (x2,y2), (0,0,255), 1)
 		cv.Line(imcolor, (x1,y2), (x2,y2), (255,0,255), 1)
 		cv.SaveImage('grid.png', imcolor)
-		
 
 class BlitzCheater(Thread):
 	timelimit = 75 # number of seconds to play
@@ -201,8 +205,8 @@ class BlitzCheater(Thread):
 		for i in rrange:
 			for j in rrange:
 				to = self.getmovefrompos(i,j)
-				if to: moves.append(((i,j), to))
-		return moves
+				if to: moves.append(((i,j), to[0], to[1]))
+		return sorted(moves, cmp=lambda x,y: 1 if x[2]>y[2] else -1)
 
 	def getmovefrompos(self, i, j):
 		x,y = self.board[i][j]
@@ -214,25 +218,73 @@ class BlitzCheater(Thread):
 			for check in move['checks']:
 				for k,l in check:
 					x,y = self.board[k][l]
-					if color != self.screen[x,y]:
+					mcolor = self.screen[x,y]
+					if not self.colorsmatch(color, mcolor): 
 						break
 				else:
 					matches+=1
 			if matches>maxmatch:
 				maxmatch, maxindex = matches, index
 		if maxmatch>0:
-			return matrix[i][j][maxindex]['move']
+			return (matrix[i][j][maxindex]['move'], maxmatch)
 		return None
+
+	def colorsmatch(self, c1, c2):
+		if c1==c2:
+			return True
+		if c1 in colormap and c2 in colormap and colormap[c1]==colormap[c2]:
+			return True
+		return False
 
 	def run(self):
 		runlimit = time.time()+self.timelimit
 		while time.time()<runlimit:
 			self.screenshot()
 			moves = self.getmoves()
-			for fr, to in moves:
+			for fr, to, matches in moves:
 				self.movegem(fr, to)
-			time.sleep(0.3)
+			time.sleep(0.1)
 
+
+class BlitzCapture(BlitzCheater):
+	timelimit = 60# number of seconds to play
+	def __init__(self, x1, y1, x2, y2):
+		super(BlitzCapture, self).__init__(x1,y1,x2,y2)
+		self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
+		self.width, self.height = (x2-x1)/8, (y2-y1)/8
+		self.xmid, self.ymid = self.width/2, self.height/2
+		self.makeboard()
+
+		self.display = display.Display()
+		self.root = self.display.screen().root
+		self.stop = False
+		self.screencount = 0
+
+	def screenshot(self):
+		"""Saves a screenshot"""
+		scrname = "data/screenshot%s.png"%self.screencount
+		screenshot(scrname)
+		self.screen = Image.open(scrname).load()
+
+	def getcolors(self):
+		dname = "data/screenshot%scolors.txt"%self.screencount
+		erange = range(8)
+		colors = [[None for i in erange] for j in erange]
+		for j in erange:
+			for i in erange:
+				x,y = self.board[i][j]
+				colors[i][j] = self.screen[x,y]
+		with open(dname, 'w') as fp:
+			for i in colors:
+				fp.write("%s\n"%i)
+
+	def run(self):
+		runlimit = time.time() + self.timelimit
+		while time.time()<runlimit:
+			self.screenshot()
+			self.getcolors()
+			self.screencount+=1
+			time.sleep(1)
 
 if __name__=="__main__":
 	matrix = make_adjacency()
