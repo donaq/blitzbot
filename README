@@ -1,4 +1,29 @@
+Intro:
+I was seriously addicted to Blitz, so I thought that if I wrote a bot that could play it well enough such that getting to the top of the leaderboard was no longer a challenge, I would be able to quit it. It seems to be working.
+
+Usage:
+Instructions will be sparse. If you want to cheat at a game, you should be prepared to do some legwork figuring things out. Besides, this only works in Linux, and I presume most Linux users will be adept enough to do it. :p
+
+1) Install the chrome extension in the "extension" subdirectory.
+2) Run blitzcheat.py.
+3) Calibrate the bot like so:
+	a) Start a game, then click outside the flash frame.
+	b) Type 'c'.
+	c) Click the top left and bottom right corners of the game grid.
+	d) Check grid.png in the root of the bot directory to make sure you got the correct boundaries.
+	e) If not, go back to your browser and type 'a' to adjust the grid by typing in the offsets for the x1 y1 x2 y2 coordinates.
+	   For example:
+	     If your top boundary is too low by 3 pixels, but all other boundaries are ok, enter "0 -3 0 0".
+4) You're done! Start a game, click outside the flash frame, and type 'p'. The bot should start playing the game. Be warned that sometimes it gets stuck. The reason for this is in the way it identifies the colors of the gems (see colors.py).
+5) If the game developers change the colors of the gems, you will have to go into data mining mode to fill up colors.py again. To do this, refer to the extension code.
+
 Dependencies:
 python 2.6+
 python Xlib
-python opencv
+python opencv 2.2+ (?)
+
+License:
+This program is licensed under the "I do not give a fuck what you do with it" license. Use, fork, sell it or whatever. Just don't ask me for maintenance or upgrades. If for some crazy reason you wish to reward me, please consider making a donation to the EFF or the FSF.
+
+Warranty:
+None whatsoever. If this bot causes Armageddon, let this be a lesson to you that cheaters never win. :p
