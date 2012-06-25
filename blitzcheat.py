@@ -77,10 +77,8 @@ class BlitzCheatHandler(StreamRequestHandler):
 	def handle(self):
 		req = self.request.recv(4096)
 		print req
+		# this message is rubbish
 		self.request.sendall("""HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: 1\r\n\r\n1\r\n\r\n""")
-		try:
-			print self.x1, self.y1, self.x2, self.y2
-		except: pass
 		if 'coords' in req:
 			req = req.split('\n')
 			coords = [l.strip() for l in req if 'coords' in l][0]
@@ -127,6 +125,7 @@ class BlitzCheatHandler(StreamRequestHandler):
 			lines = cv.HoughLines2(edges,cv.CreateMemStorage(),cv.CV_HOUGH_PROBABILISTIC,1,math.pi/2,3,30,4)
 			return fun([line[0][orient] for line in lines if line[0][orient]==line[1][orient] and line[0][orient]>=lim1 and line[0][orient]<=lim2])
 
+		# the values used for HoughLines2 were derived by twiddling.
 		# get left side
 		mean = getmean(image, x1-5,y1,10,y2-y1)
 		server.x1 = getlines(image, edges, mean, 0, x1-3, x1+3, max)
@@ -150,13 +149,11 @@ class BlitzCheatHandler(StreamRequestHandler):
 		x1,y1,x2,y2 = server.x1,server.y1,server.x2,server.y2
 		jumpx, jumpy = (x2-x1)/8, (y2-y1)/8
 		
-		for i in range(8):
+		for i in range(9):
 			currx, curry = x1 + jumpx*i, y1 + jumpy*i
 			cv.Line(imcolor, (x1, curry), (x2, curry), (0,0,255), 1)
 			cv.Line(imcolor, (currx, y1), (currx, y2), (0,0,255), 1)
 		
-		cv.Line(imcolor, (x2,y1), (x2,y2), (0,0,255), 1)
-		cv.Line(imcolor, (x1,y2), (x2,y2), (255,0,255), 1)
 		cv.SaveImage('grid.png', imcolor)
 
 class BlitzCheater(Thread):
