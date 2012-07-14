@@ -38,8 +38,15 @@ $(document).ready(function(){
 			if(params!=null && params!="")
 				$.post(serv, {"adjust": params});
 		}
+		// m for mining
 		else if(evt.which==109)
 			$.post(serv, {"mining":"true"});
+		// t for time in seconds
+		else if(evt.which==116){
+			params = prompt("time: ", "");
+			if(params!=null && params!="")
+				$.post(serv, {"time": params});
+		}
 	});
 	$(document).click(function(evt){
 		if(!overlayshown) return;

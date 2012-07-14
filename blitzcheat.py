@@ -105,6 +105,14 @@ class BlitzCheatHandler(StreamRequestHandler):
 			server = self.server
 			capturer = BlitzCapture(server.x1, server.y1, server.x2, server.y2)
 			capturer.run()
+		elif "time" in req:
+			server = self.server
+			req = req.split('\n')
+			timelimit = [l.strip() for l in req if 'time' in l][0]
+			timelimit = int(timelimit.split("=")[1])
+			print "Starting bot with timelimit of %s" % timelimit
+			bc = BlitzCheater(server.x1, server.y1, server.x2, server.y2, timelimit=timelimit)
+			bc.run()
 
 	def calibrate(self, showgrid=True):
 		screenshot()
@@ -157,12 +165,12 @@ class BlitzCheatHandler(StreamRequestHandler):
 		cv.SaveImage('grid.png', imcolor)
 
 class BlitzCheater(Thread):
-	timelimit = 75 # number of seconds to play
-	def __init__(self, x1, y1, x2, y2):
+	def __init__(self, x1, y1, x2, y2, timelimit=75):
 		super(BlitzCheater, self).__init__()
 		self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
 		self.width, self.height = (x2-x1)/8, (y2-y1)/8
 		self.xmid, self.ymid = self.width/2, self.height/2
+		self.timelimit = timelimit
 		self.makeboard()
 
 		self.display = display.Display()
